@@ -37,7 +37,7 @@ export function usePortfolio() {
     convert: (usd: number) => usd * rate,
     displayCurrency,
     isLoading: transactionsQuery.isPending || (heldIds.length > 0 && pricesQuery.isPending),
-    error: transactionsQuery.error ?? pricesQuery.error,
+    error: transactionsQuery.error ?? (pricesQuery.data ? null : pricesQuery.error),
     refetch: () => {
       transactionsQuery.refetch()
       pricesQuery.refetch()

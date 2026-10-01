@@ -62,7 +62,7 @@ export function MarketTable({
     () => ({
       market_cap_rank: !isMobile,
       price_change_percentage_7d_in_currency: !isMobile,
-      market_cap: !isMobile,
+      market_cap: !isTablet,
       total_volume: !isTablet,
     }),
     [isMobile, isTablet],

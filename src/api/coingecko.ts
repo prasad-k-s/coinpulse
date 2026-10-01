@@ -14,6 +14,11 @@ export class ApiError extends Error {
   }
 }
 
+/** Status used when the request never got a readable response (network error / blocked 429). */
+export const NETWORK_ERROR_STATUS = 0
+export const RATE_LIMIT_MESSAGE =
+  "CoinGecko's free API is busy right now. Retrying automatically, please wait a few seconds."
+
 type QueryParams = Record<string, string | number | boolean | undefined>
 
 export function buildUrl(path: string, params: QueryParams = {}): string {
@@ -33,16 +38,23 @@ export async function cgFetch<T>(
   params?: QueryParams,
   signal?: AbortSignal,
 ): Promise<T> {
-  const response = await fetch(buildUrl(path, params), {
-    headers: { accept: 'application/json' },
-    signal,
-  })
+  let response: Response
+  try {
+    response = await fetch(buildUrl(path, params), {
+      headers: { accept: 'application/json' },
+      signal,
+    })
+  } catch (error) {
+    // Cancelled by React Query (e.g. the user navigated away): let it through untouched
+    if (signal?.aborted) throw error
+    // CoinGecko's rate-limit (429) responses have no CORS headers, so the browser can't read
+    // them and fetch just fails with "Failed to fetch". Treat it as a temporary error.
+    throw new ApiError(NETWORK_ERROR_STATUS, RATE_LIMIT_MESSAGE)
+  }
 
   if (!response.ok) {
     const message =
-      response.status === 429
-        ? 'Too many requests to CoinGecko. Please wait a moment and try again.'
-        : `CoinGecko request failed (${response.status})`
+      response.status === 429 ? RATE_LIMIT_MESSAGE : `CoinGecko request failed (${response.status})`
     throw new ApiError(response.status, message)
   }
 

@@ -79,7 +79,7 @@ export function PriceChart({ coinId, currency }: PriceChartProps) {
 
         {isPending ? (
           <Skeleton variant="rounded" height={320} />
-        ) : error ? (
+        ) : error && !data ? (
           <ErrorState error={error} onRetry={() => refetch()} />
         ) : (
           <Box sx={{ height: 320, opacity: isFetching ? 0.6 : 1, transition: 'opacity 0.2s' }}>

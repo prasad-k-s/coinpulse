@@ -38,7 +38,8 @@ export default function WatchlistPage() {
     .filter((coin) => coin !== undefined)
 
   const loading = watchlist.isPending || (ids.length > 0 && markets.isPending)
-  const error = watchlist.error ?? markets.error
+  // Price refresh errors are ignored while we still have cached prices to show
+  const error = watchlist.error ?? (markets.data ? null : markets.error)
 
   return (
     <>

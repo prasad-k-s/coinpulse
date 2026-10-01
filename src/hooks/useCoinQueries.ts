@@ -38,6 +38,7 @@ export function useCoin(id: string) {
     queryKey: queryKeys.coin(id),
     queryFn: ({ signal }) => coingeckoApi.getCoin(id, signal),
     enabled: Boolean(id),
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -46,6 +47,7 @@ export function useMarketChart(id: string, currency: Currency, days: ChartRange)
     queryKey: queryKeys.marketChart(id, currency, days),
     queryFn: ({ signal }) => coingeckoApi.getMarketChart(id, currency, days, signal),
     enabled: Boolean(id),
+    staleTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData, // keep the old chart visible while switching ranges
     select: (data) => data.prices.map(([time, price]) => ({ time, price })),
   })
@@ -58,6 +60,6 @@ export function useSimplePrices(ids: string[]) {
     queryKey: queryKeys.simplePrices(sortedIds),
     queryFn: ({ signal }) => coingeckoApi.getSimplePrices(sortedIds, signal),
     enabled: ids.length > 0,
-    refetchInterval: 60_000,
+    refetchInterval: 2 * 60 * 1000,
   })
 }

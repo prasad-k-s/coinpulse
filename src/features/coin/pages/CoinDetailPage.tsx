@@ -45,7 +45,8 @@ export default function CoinDetailPage() {
     )
   }
 
-  if (error || !coin) {
+  // Only show the error page if there's no cached data to fall back on
+  if (!coin) {
     return (
       <>
         {backLink}

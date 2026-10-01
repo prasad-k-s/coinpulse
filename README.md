@@ -4,7 +4,11 @@ A crypto portfolio tracker built with **React 19, TypeScript, Redux Toolkit, Tan
 
 Browse 2,000+ coins in a fast virtualized table, open any coin for price charts and stats, keep a personal watchlist, and record buy/sell transactions to see your portfolio value and profit/loss in USD or INR.
 
-> **Live demo:** _add your Netlify link here_
+**🔗 Live demo: [prasad-coinpulse.netlify.app](https://prasad-coinpulse.netlify.app/)**
+
+<p align="center">
+  <img src="docs/screenshot-mobile.png" alt="CoinPulse markets page on a phone, dark mode" width="320" />
+</p>
 
 ---
 
@@ -35,6 +39,18 @@ Browse 2,000+ coins in a fast virtualized table, open any coin for price charts 
 | Forms | React Hook Form + Zod |
 | Testing | Vitest, React Testing Library, user-event, MSW (Mock Service Worker) |
 | Tooling | ESLint, Prettier, GitHub Actions CI |
+
+## Handling CoinGecko's rate limit
+
+The free CoinGecko API allows only a limited number of requests per minute. When you go over it, CoinGecko replies with HTTP 429, but that response has no CORS headers. The browser therefore hides the status code and `fetch` simply fails with **"Failed to fetch"**.
+
+CoinPulse handles this in a few ways:
+
+- **Friendly errors:** network failures are turned into an `ApiError` with a clear message instead of the raw "Failed to fetch".
+- **Automatic retries:** temporary errors (rate limit, network, 5xx) are retried up to 4 times with exponential backoff (2s, 4s, 8s, 16s), spreading the retries across the rate-limit window.
+- **Caching:** prices are cached for 2 minutes, and coin details and charts for 5 minutes, so moving between pages doesn't send new requests.
+- **Cached data stays visible:** if a background refresh fails, the table, chart or portfolio keeps showing the last good data with a small warning, instead of being replaced by an error.
+- **Optional free API key:** a Demo key gives a much higher limit.
 
 ## Why the state is split this way
 
@@ -108,7 +124,7 @@ VITE_FIREBASE_APP_ID=1:1234567890:web:abc123
 
 > Firebase web keys are designed to be public. Your data is protected by the security rules, not by hiding the keys.
 
-Optional: create a free [CoinGecko Demo API key](https://www.coingecko.com/en/api/pricing) and set `VITE_COINGECKO_API_KEY` for higher rate limits. The app works without it.
+**Recommended:** create a free [CoinGecko Demo API key](https://www.coingecko.com/en/api/pricing) (no credit card needed) and set `VITE_COINGECKO_API_KEY`. Without a key, CoinGecko only allows a few requests per minute per visitor, so the app will sometimes show "CoinGecko's free API is busy" while it waits and retries.
 
 ### 4. Run
 
@@ -152,7 +168,7 @@ What's covered:
 
 1. Push the project to GitHub.
 2. In [Netlify](https://app.netlify.com/), choose **Add new site → Import an existing project** and pick the repo. The build settings come from `netlify.toml`.
-3. Under **Site configuration → Environment variables**, add the same `VITE_FIREBASE_*` values from your `.env`.
+3. Under **Site configuration → Environment variables**, add the same `VITE_FIREBASE_*` values from your `.env`, plus `VITE_COINGECKO_API_KEY` if you have one.
 4. Deploy, then in the Firebase console go to **Authentication → Settings → Authorized domains** and add your Netlify domain (for example `coinpulse.netlify.app`). Google sign-in needs this.
 
 `netlify.toml` already redirects every route to `index.html`, so refreshing a page like `/portfolio` works.

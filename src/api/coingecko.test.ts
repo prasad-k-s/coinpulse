@@ -1,6 +1,12 @@
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/server'
-import { ApiError, buildUrl, COINGECKO_BASE_URL, coingeckoApi } from './coingecko'
+import {
+  ApiError,
+  buildUrl,
+  COINGECKO_BASE_URL,
+  coingeckoApi,
+  NETWORK_ERROR_STATUS,
+} from './coingecko'
 
 describe('buildUrl', () => {
   it('adds query params and skips empty ones', () => {
@@ -30,7 +36,17 @@ describe('coingeckoApi', () => {
     await expect(promise).rejects.toBeInstanceOf(ApiError)
     await expect(promise).rejects.toMatchObject({
       status: 429,
-      message: expect.stringMatching(/too many requests/i),
+      message: expect.stringMatching(/busy/i),
+    })
+  })
+
+  it('turns "Failed to fetch" into a friendly temporary error', async () => {
+    // Browsers report CoinGecko's rate limit as a network error because the 429 has no CORS headers
+    server.use(http.get(`${COINGECKO_BASE_URL}/coins/markets`, () => HttpResponse.error()))
+
+    await expect(coingeckoApi.getMarkets({ currency: 'usd' })).rejects.toMatchObject({
+      status: NETWORK_ERROR_STATUS,
+      message: expect.stringMatching(/busy/i),
     })
   })
 })
