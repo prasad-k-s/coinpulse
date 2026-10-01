@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, ScrollRestoration } from 'react-router'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import MenuIcon from '@mui/icons-material/Menu'
 import ShowChartIcon from '@mui/icons-material/ShowChart'
@@ -117,6 +117,8 @@ export function AppLayout() {
         sx={{ flexGrow: 1, py: { xs: 2, sm: 3, md: 4 }, px: { xs: 1.5, sm: 3 } }}
       >
         <Outlet />
+        {/* New pages start at the top; going back restores the previous scroll position */}
+        <ScrollRestoration />
       </Container>
 
       <Box component="footer" sx={{ borderTop: 1, borderColor: 'divider', py: 2.5 }}>

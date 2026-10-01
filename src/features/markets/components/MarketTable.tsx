@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router'
 import {
   flexRender,
@@ -6,6 +6,7 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type OnChangeFn,
   type SortingState,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -25,6 +26,8 @@ import type { MarketCoin } from '@/api/types'
 import { CoinLabel } from '@/components/common/CoinLabel'
 import { PriceChange } from '@/components/common/PriceChange'
 import { formatCompactCurrency, formatCurrency } from '@/lib/format'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { setScrollOffset, setSorting } from '@/store/slices/marketFiltersSlice'
 import type { Currency } from '@/types'
 
 const ROW_HEIGHT = 64
@@ -52,7 +55,13 @@ export function MarketTable({
 }: MarketTableProps) {
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [sorting, setSorting] = useState<SortingState>([])
+  const dispatch = useAppDispatch()
+  // Sorting and scroll position live in Redux so they survive opening a coin and coming back
+  const sorting = useAppSelector((state) => state.marketFilters.sorting)
+  const savedScrollOffset = useAppSelector((state) => state.marketFilters.scrollOffset)
+  const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
+    dispatch(setSorting(typeof updater === 'function' ? updater(sorting) : updater))
+  }
 
   // Fewer columns on small screens so the table fits without sideways scrolling
   const theme = useTheme()
@@ -121,7 +130,7 @@ export function MarketTable({
     data: coins,
     columns,
     state: { sorting, columnVisibility },
-    onSortingChange: setSorting,
+    onSortingChange: handleSortingChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
@@ -132,8 +141,28 @@ export function MarketTable({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
+    initialOffset: savedScrollOffset, // jump back to where the user was
     overscan: 8,
   })
+
+  // Remember the scroll position when leaving the page (e.g. opening a coin).
+  // It's tracked in a ref on every scroll because the DOM element is already gone on unmount.
+  const lastScrollTop = useRef(savedScrollOffset)
+  useEffect(() => {
+    return () => {
+      dispatch(setScrollOffset(lastScrollTop.current))
+    }
+  }, [dispatch])
+
+  // Coming back: put the scroll position back once the rows are there
+  const restored = useRef(false)
+  useLayoutEffect(() => {
+    if (restored.current || rows.length === 0) return
+    restored.current = true
+    if (savedScrollOffset > 0 && scrollRef.current) {
+      scrollRef.current.scrollTop = savedScrollOffset
+    }
+  }, [rows.length, savedScrollOffset])
 
   const virtualRows = virtualizer.getVirtualItems()
   const lastVisibleIndex = virtualRows.at(-1)?.index ?? 0
@@ -152,10 +181,12 @@ export function MarketTable({
 
   // Spacer rows keep the scrollbar the right size for rows that aren't rendered
   const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0
+  // Before the first measurement no rows are rendered yet; still reserve the full height
+  // so the container can be scrolled to a saved position straight away.
   const paddingBottom =
     virtualRows.length > 0
       ? virtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
-      : 0
+      : virtualizer.getTotalSize()
 
   const visibleColumnCount = table.getVisibleLeafColumns().length
 
@@ -163,6 +194,9 @@ export function MarketTable({
     <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
       <TableContainer
         ref={scrollRef}
+        onScroll={(e) => {
+          lastScrollTop.current = e.currentTarget.scrollTop
+        }}
         sx={{ height: { xs: 'calc(100vh - 300px)', md: 'calc(100vh - 280px)' }, minHeight: 400 }}
       >
         <Table
